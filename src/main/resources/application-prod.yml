@@ -1,0 +1,29 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+
+neoteric:
+  crypto:
+    mk: 72d5ce10667fb4fbcf954321d0913a0f
+    slt: 663c9ffd97fabf7d5164def22bd2b40d
+  primary-db:
+    user: avoota_prod_user
+    pw: 0ec441af8e56eeacf8ba88bd00a2adfa45c0f69e44ec3c84d20ff6ef877a7337f79cca7368a564f1278a1f22e2f5c15777fee6cf95e5dd620213e694759de414
+    url: jdbc:postgresql://dpg-d07h3rili9vc73f9l59g-a.singapore-postgres.render.com/avoota_prod #Private URL
+
+  rest:
+    secure:
+      enabled: false
+
+  jwt-app:
+    secret: 8813264f956c9593184097dd9c413676dfecb6034a3d46525c7f6647385f83bd  # JWT Secret Key for Token
+    client-id: avoota-mobile  # Client ID for Authentication
+    type: app
+
+  jwt-dashboard:
+    secret: 8236fbbc8148d3f43da56b7ed2f034ed1bca65e474a17586e50b42b777840f7d  # JWT Secret Key for Token
+    client-id: avoota-dashboard  # Client ID for Authentication
+    type: dashboard
+

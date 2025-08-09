@@ -1,0 +1,32 @@
+server.port: 10008
+management.endpoints:
+  web.exposure:
+    include: health
+
+spring:
+  application.name: dpop-core
+  datasource.hikari:
+    connection-timeout: 30_000 #maximum number of milliseconds that a client (that's you) will wait for a connection from the pool.
+    minimum-idle: 5
+    maximum-pool-size: 12
+    idle-timeout: 300_000 #maximum amount of time that a connection is allowed to sit idle in the pool.
+    auto-commit: true
+    register-mbeans: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  codec:
+    max-in-memory-size: 51200KB
+
+neoteric:
+  primary-db:
+    driver-class-name: org.postgresql.Driver
+    datasource-name: avootaPgDatasource
+  rest:
+    secure:
+      enabled: false
+    connection-timeout-secs: 50
+    response-timeout-secs: 50
+    max-retries: 1
+    retry-after: 5
