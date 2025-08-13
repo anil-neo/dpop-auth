@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neoteric.dpop.core.token.entity.TokenEntity;
 import com.neoteric.dpop.core.token.service.TokenService;
 import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -40,30 +43,32 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
 
         String uri = request.getRequestURI();
 
-        // Skip public endpoints
+        // Skip public APIs
         if (isPublicEndpoint(uri)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = request.getHeader("Authorization"); // "DPoP <token>"
+        // Extract headers
+        String authHeader = request.getHeader("Authorization");
         String dpopProof = request.getHeader("DPoP");
 
-        if (token == null || dpopProof == null) {
+        if (authHeader == null || dpopProof == null) {
             sendUnauthorized(response, "Missing Authorization or DPoP header");
             return;
         }
 
-        // Remove "DPoP " prefix if present
-        token = token.replaceFirst("(?i)^DPoP\\s+", "").trim();
+        // Remove "DPoP " prefix from Authorization token
+        String accessToken = authHeader.replaceFirst("(?i)^DPoP\\s+", "").trim();
 
-        // Validate JWT token from DB/service
-        Optional<TokenEntity> tokenEntity = tokenService.findByToken(token, uri);
+        // Validate token from DB
+        Optional<TokenEntity> tokenEntity = tokenService.findByToken(accessToken, uri);
         if (tokenEntity.isEmpty() || tokenEntity.get().getExpiredAt().isBefore(Instant.now())) {
             sendUnauthorized(response, "Invalid or expired token");
             return;
@@ -71,13 +76,14 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
         // Validate DPoP proof
         try {
-            validateDpopProof(dpopProof, request, token);
+            validateDpopProof(dpopProof, request, accessToken);
         } catch (Exception e) {
             log.warn("DPoP validation failed: {}", e.getMessage());
             sendUnauthorized(response, "Invalid DPoP proof: " + e.getMessage());
             return;
         }
 
+        // Continue request
         filterChain.doFilter(request, response);
     }
 
@@ -85,52 +91,53 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         try {
             SignedJWT jwt = SignedJWT.parse(dpopProof);
 
-            // Get public key from DPoP header
+            // Extract public key from header
             JWK jwk = jwt.getHeader().getJWK();
-            if (jwk == null) {
-                throw new RuntimeException("Missing JWK in DPoP proof");
+            if (jwk == null) throw new RuntimeException("Missing JWK in DPoP proof");
+
+            // Choose verifier
+            JWSVerifier verifier;
+            if (jwk instanceof RSAKey rsaKey) {
+                verifier = new RSASSAVerifier(rsaKey);
+            } else if (jwk instanceof ECKey ecKey) {
+                verifier = new ECDSAVerifier(ecKey);
+            } else {
+                throw new RuntimeException("Unsupported JWK key type: " + jwk.getKeyType());
             }
 
-            RSAKey rsaKey = jwk.toRSAKey();
-            RSASSAVerifier verifier = new RSASSAVerifier(rsaKey);
-            if (!jwt.verify(verifier)) {
-                throw new RuntimeException("Invalid DPoP signature");
-            }
+            if (!jwt.verify(verifier)) throw new RuntimeException("Invalid DPoP signature");
 
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
 
-            // HTTP method check
+            // 1️⃣ HTTP Method check
             String method = claims.getStringClaim("htm");
-            if (method == null || !method.equalsIgnoreCase(request.getMethod())) {
+            if (method == null || !method.equalsIgnoreCase(request.getMethod()))
                 throw new RuntimeException("HTTP method mismatch");
-            }
 
-            // HTTP URI check (normalize without query params)
-            URI actualUri = URI.create(request.getRequestURL().toString());
+            // 2️⃣ URI check (ignore query params)
+            URI requestUri = URI.create(request.getRequestURL().toString());
             URI proofUri = URI.create(claims.getStringClaim("htu"));
-            if (!actualUri.getScheme().equalsIgnoreCase(proofUri.getScheme()) ||
-                    !actualUri.getHost().equalsIgnoreCase(proofUri.getHost()) ||
-                    !actualUri.getPath().equals(proofUri.getPath())) {
+            if (!requestUri.getScheme().equalsIgnoreCase(proofUri.getScheme())
+                    || !requestUri.getHost().equalsIgnoreCase(proofUri.getHost())
+                    || !requestUri.getPath().equals(proofUri.getPath())) {
                 throw new RuntimeException("HTTP URI mismatch");
             }
 
-            // iat check (within ±5 minutes)
+            // 3️⃣ Issued-at check (within 5 min)
             Instant issuedAt = claims.getDateClaim("iat").toInstant();
             Instant now = Instant.now();
-            if (issuedAt.isBefore(now.minusSeconds(300)) || issuedAt.isAfter(now.plusSeconds(5))) {
+            if (issuedAt.isBefore(now.minusSeconds(300)) || issuedAt.isAfter(now.plusSeconds(5)))
                 throw new RuntimeException("DPoP proof time invalid");
-            }
 
-            // Access token hash check
+            // 4️⃣ Access Token hash check
             String expectedAth = hashAccessToken(accessToken);
-            if (!expectedAth.equals(claims.getStringClaim("ath"))) {
+            if (!expectedAth.equals(claims.getStringClaim("ath")))
                 throw new RuntimeException("Access token hash mismatch");
-            }
 
         } catch (java.text.ParseException e) {
             throw new RuntimeException("Invalid DPoP proof format");
         } catch (JOSEException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("DPoP verification error: " + e.getMessage());
         }
     }
 
@@ -147,12 +154,12 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         objectMapper.writeValue(response.getWriter(),
-                Map.of("status", "UnAuthorized", "message", message));
+                Map.of("status", "Unauthorized", "message", message));
     }
 
     private boolean isPublicEndpoint(String uri) {
-        return uri.contains("/api/neoteric/generate-token") ||
-                uri.contains("/api/neoteric/generateDeviceToken") ||
-                uri.contains("/health");
+        return uri.contains("/api/neoteric/generate-token")
+                || uri.contains("/api/neoteric/generateDeviceToken")
+                || uri.contains("/health");
     }
 }

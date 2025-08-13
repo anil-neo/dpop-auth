@@ -42,7 +42,7 @@ public class TokenController {
         return ResponseEntity.ok(token);
     }
 
-    @GetMapping(value = "/generateDeviceToken", consumes = "application/json")
+    @GetMapping(value = "/generateDeviceToken")
     public ResponseEntity<Token> generateDeviceToken() {
         log.info("Entering generateDeviceToken : generating the token for the mobile-app");
         ClientDetails clientDetails = new ClientDetails();

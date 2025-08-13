@@ -10,18 +10,38 @@ neoteric:
   primary-db:
     user: avoota_user
     pw: e902d442fe07c0db401150790bacd3a72ad2e51cdd5d026e8e133a5dae03ecc9e10c5321379a87ab7b2dc02829e3870ecf087a9c69766c467d61400d5293b183
-    url: jdbc:postgresql://dpg-ctqj833tq21c73a2g69g-a/avoota #Private URL
+    url: jdbc:postgresql://dpg-ctqj833tq21c73a2g69g-a.singapore-postgres.render.com/avoota
 
   rest:
     secure:
       enabled: false
 
   jwt-app:
-    secret: 8813264f956c9593184097dd9c413676dfecb6034a3d46525c7f6647385f83bd  # JWT Secret Key for Token
-    client-id: avoota-mobile  # Client ID for Authentication
+    secret: 8813264f956c9593184097dd9c413676dfecb6034a3d46525c7f6647385f83bd
+    client-id: avoota-mobile
     type: app
 
   jwt-dashboard:
-    secret: 8236fbbc8148d3f43da56b7ed2f034ed1bca65e474a17586e50b42b777840f7d  # JWT Secret Key for Token
-    client-id: avoota-dashboard  # Client ID for Authentication
+    secret: 8236fbbc8148d3f43da56b7ed2f034ed1bca65e474a17586e50b42b777840f7d
+    client-id: avoota-dashboard
     type: dashboard
+
+# DPoP + generic JWT config
+server:
+  port: 10008
+
+jwt:
+  secret:
+    base64: +Xk0GEnru5FtxV197314mwSjfIQyFNXfU55BpwJda4c=
+  issuer: https://localhost:10008
+  access:
+    ttl:
+      seconds: 900 # 15 minutes
+
+dpop:
+  clock:
+    skew:
+      seconds: 60
+  replay:
+    ttl:
+      seconds: 300
