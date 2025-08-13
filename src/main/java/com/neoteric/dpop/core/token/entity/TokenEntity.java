@@ -36,6 +36,9 @@ public class TokenEntity {
 
     @Column(name = "requester_id", updatable = false)
     private String requesterId;
+    @Lob
+    @Column(name = "public_key_jwk", nullable = false)
+    private String publicKeyJwk;
 
 }
 

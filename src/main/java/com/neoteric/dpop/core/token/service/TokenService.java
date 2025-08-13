@@ -49,7 +49,7 @@ public class TokenService {
     }
 
     /**
-     * Generate token for a client.
+     * GenerCorsConfigate token for a client.
      */
     @Transactional(propagation = Propagation.REQUIRED)
     public Token generateToken(ClientDetails clientDetails) {
