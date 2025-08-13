@@ -10,7 +10,7 @@ neoteric:
   primary-db:
     user: avoota_user
     pw: e902d442fe07c0db401150790bacd3a72ad2e51cdd5d026e8e133a5dae03ecc9e10c5321379a87ab7b2dc02829e3870ecf087a9c69766c467d61400d5293b183
-    url: jdbc:postgresql://dpg-ctqj833tq21c73a2g69g-a/avoota #Private URL
+    url: jdbc:postgresql://dpg-ctqj833tq21c73a2g69g-a.singapore-postgres.render.com/avoota #Private URL
 
   rest:
     secure:
