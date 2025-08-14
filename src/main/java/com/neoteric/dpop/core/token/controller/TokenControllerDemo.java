@@ -1,11 +1,15 @@
 package com.neoteric.dpop.core.token.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.neoteric.dpop.core.token.model.ClientDetails;
+import com.neoteric.dpop.core.token.model.Token;
+import com.neoteric.dpop.core.token.service.TokenService;
 import com.neoteric.dpop.core.utils.BindingStore;
 import com.neoteric.dpop.core.utils.DPoPVerifier;
 import com.nimbusds.jose.jwk.ECKey;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +22,11 @@ import java.util.UUID;
 public class TokenControllerDemo {
     private final DPoPVerifier verifier;
     private final BindingStore bindingStore;
+    private final TokenService tokenService;
+    @Value("${neoteric.jwt-app.client-id}")
+    private String clientId;
+    @Value("${neoteric.jwt-app.secret}")
+    private String secretKey;
 
     public record TokenResponse(
             @JsonProperty("access_token") String accessToken,
@@ -39,7 +48,12 @@ public class TokenControllerDemo {
 
         // Compute jkt and bind token → jkt
         String jkt = DPoPVerifier.jktThumbprint((ECKey) result.jwk());
-        String accessToken = BindingStore.newToken();
+        ClientDetails clientDetails = new ClientDetails();
+        clientDetails.setClientId(clientId);
+        clientDetails.setClientSecret(secretKey);
+
+        Token token = tokenService.generateToken(clientDetails);
+        String accessToken = token.getToken();
         bindingStore.bind(accessToken, jkt);
 
         // (Optionally) include cnf.jkt inside a JWT access token. Here we keep token opaque and return cnf separately.
