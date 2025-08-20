@@ -19,35 +19,40 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Date;
 
+import static com.neoteric.dpop.core.utils.NeotericConstants.HASH_ALGORITHM;
+
 @Component
 public class DPoPVerifier {
 
-    public record Result(JWK jwk, JWTClaimsSet claims) {}
+    public record Result(JWK jwk, JWTClaimsSet claims) {
+    }
 
     public Result verifyProof(String dpopJwt, HttpServletRequest req, String accessTokenIfAny) {
         try {
             SignedJWT jwt = SignedJWT.parse(dpopJwt);
 
             // Header checks
+
             JWSHeader hdr = jwt.getHeader();
             if (hdr.getType() == null || !"dpop+jwt".equalsIgnoreCase(hdr.getType().toString())) {
-                throw new JOSEException("typ must be dpop+jwt");
+                throw new JOSEException(NeoErrors.TYP.getMessage());
             }
             JWK jwk = hdr.getJWK();
-            if (jwk == null) throw new JOSEException("Missing JWK in header");
+            if (jwk == null) throw new JOSEException(NeoErrors.MISSING_JWK.getMessage());
             if (!(KeyType.EC.equals(jwk.getKeyType()) && "P-256".equals(((ECKey) jwk).getCurve().getName()))) {
-                throw new JOSEException("Only EC P-256 supported in this demo");
+                throw new JOSEException(NeoErrors.ONLY_EC_P256_SUPPORTED.getMessage());
             }
 
             // Signature
             JWSVerifier verifier = new ECDSAVerifier(((ECKey) jwk).toECPublicKey());
-            if (!jwt.verify(verifier)) throw new JOSEException("Invalid DPoP signature");
+            if (!jwt.verify(verifier)) throw new JOSEException(NeoErrors.INVALID_SIGNATURE.getMessage());
 
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
 
             // htm
             String htm = claims.getStringClaim("htm");
-            if (htm == null || !htm.equalsIgnoreCase(req.getMethod())) throw new JOSEException("htm mismatch");
+            if (htm == null || !htm.equalsIgnoreCase(req.getMethod()))
+                throw new JOSEException(NeoErrors.HTM_MISMATCH.getMessage());
 
             // htu (scheme/host/port/path match; query excluded)
             URI reqUri = URI.create(req.getRequestURL().toString());
@@ -56,27 +61,27 @@ public class DPoPVerifier {
                     !eq(reqUri.getHost(), htu.getHost()) ||
                     normPort(reqUri) != normPort(htu) ||
                     !eq(reqUri.getPath(), htu.getPath())) {
-                throw new JOSEException("htu mismatch");
+                throw new JOSEException(NeoErrors.HTU_MISMATCH.getMessage());
             }
 
             // iat (5 min skew)
             Date iat = claims.getDateClaim("iat");
-            if (iat == null) throw new JOSEException("missing iat");
+            if (iat == null) throw new JOSEException(NeoErrors.MISSING_IAT.getMessage());
             Instant now = Instant.now();
             Instant i = iat.toInstant();
             if (i.isBefore(now.minusSeconds(300)) || i.isAfter(now.plusSeconds(5))) {
-                throw new JOSEException("iat out of range");
+                throw new JOSEException(NeoErrors.IAT_OUT_OF_RANGE.getMessage());
             }
 
             // ath if access token present (resource call)
             if (accessTokenIfAny != null && !accessTokenIfAny.isBlank()) {
                 String ath = claims.getStringClaim("ath");
                 if (ath == null || !ath.equals(sha256b64u(accessTokenIfAny))) {
-                    throw new JOSEException("ath mismatch");
+                    throw new JOSEException(NeoErrors.ATH_MISMATCH.getMessage());
                 }
             }
             // jti presence (replay protection is in filter using BindingStore)
-            if (claims.getStringClaim("jti") == null) throw new JOSEException("missing jti");
+            if (claims.getStringClaim("jti") == null) throw new JOSEException(NeoErrors.MISSING_JTI.getMessage());
 
             return new Result(jwk, claims);
 
@@ -86,19 +91,26 @@ public class DPoPVerifier {
     }
 
     public static String jktThumbprint(ECKey ecKey) throws JOSEException {
-        Base64URL thumb = ecKey.computeThumbprint("SHA-256");
+        Base64URL thumb = ecKey.computeThumbprint(HASH_ALGORITHM);
         return thumb.toString(); // base64url
     }
 
     public static String sha256b64u(String s) throws Exception {
-        MessageDigest d = MessageDigest.getInstance("SHA-256");
+        MessageDigest d = MessageDigest.getInstance(HASH_ALGORITHM);
         byte[] h = d.digest(s.getBytes(StandardCharsets.UTF_8));
         return Base64URL.encode(h).toString();
     }
 
-    private static boolean eq(String a, String b) { return (a == null && b == null) || (a != null && a.equalsIgnoreCase(b)); }
+    private static boolean eq(String a, String b) {
+        return (a == null && b == null) || (a != null && a.equalsIgnoreCase(b));
+    }
+
     private static int normPort(URI u) {
         if (u.getPort() != -1) return u.getPort();
-        return switch (u.getScheme()) { case "http" -> 80; case "https" -> 443; default -> -1; };
+        return switch (u.getScheme()) {
+            case "http" -> 80;
+            case "https" -> 443;
+            default -> -1;
+        };
     }
 }

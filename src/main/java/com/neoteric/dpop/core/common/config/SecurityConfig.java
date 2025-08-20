@@ -1,5 +1,5 @@
 
-        package com.neoteric.dpop.core.common.config;
+package com.neoteric.dpop.core.common.config;
 
 import com.neoteric.dpop.core.token.filter.DPoPFilter;
 import org.springframework.context.annotation.Bean;
@@ -32,7 +32,8 @@ public class SecurityConfig {
                 // Enable and configure CORS
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+                   // config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+                    config.setAllowedOriginPatterns(List.of("*")); // Allow all origins for simplicity, adjust as needed
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
@@ -57,7 +58,8 @@ public class SecurityConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+        //config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+        config.setAllowedOriginPatterns(List.of("*")); // Allow all origins for simplicity, adjust as needed
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

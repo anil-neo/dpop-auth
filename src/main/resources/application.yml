@@ -30,3 +30,6 @@ neoteric:
     response-timeout-secs: 50
     max-retries: 1
     retry-after: 5
+
+  base64:
+    secret: +Xk0GEnru5FtxV197314mwSjfIQyFNXfU55BpwJda4c=

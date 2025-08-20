@@ -21,6 +21,8 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.neoteric.dpop.core.utils.NeotericConstants.BASE64SECRET;
+
 @Service
 @Slf4j
 public class TokenService {
@@ -36,14 +38,12 @@ public class TokenService {
     @Value("${neoteric.jwt-app.client-id}")
     private String clientId;
 
+
     public TokenService(TokenRepository tokenRepository,
                         ClientRepository clientRepository) {
         this.tokenRepository = tokenRepository;
         this.clientRepository = clientRepository;
-
-        // Hardcode the Base64 secret key for now
-        String base64Secret = "+Xk0GEnru5FtxV197314mwSjfIQyFNXfU55BpwJda4c=";
-        this.jwtSecret = Keys.hmacShaKeyFor(java.util.Base64.getDecoder().decode(base64Secret));
+        this.jwtSecret = Keys.hmacShaKeyFor(java.util.Base64.getDecoder().decode(BASE64SECRET));
     }
 
     /**

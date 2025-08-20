@@ -1,5 +1,5 @@
 
-        package com.neoteric.dpop.core.token.filter;
+package com.neoteric.dpop.core.token.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neoteric.dpop.core.token.service.TokenService;
@@ -13,8 +13,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 

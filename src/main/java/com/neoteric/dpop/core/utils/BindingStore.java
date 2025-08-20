@@ -12,8 +12,13 @@ public class BindingStore {
     private final Map<String, String> tokenToJkt = new ConcurrentHashMap<>();
     private final Map<String, Instant> jtiSeen = new ConcurrentHashMap<>();
 
-    public void bind(String token, String jkt) { tokenToJkt.put(token, jkt); }
-    public String getJkt(String token) { return tokenToJkt.get(token); }
+    public void bind(String token, String jkt) {
+        tokenToJkt.put(token, jkt);
+    }
+
+    public String getJkt(String token) {
+        return tokenToJkt.get(token);
+    }
 
     public boolean rememberJti(String jti, long ttlSeconds) {
         Instant now = Instant.now();
@@ -23,5 +28,4 @@ public class BindingStore {
         return true;
     }
 
-    public static String newToken() { return "at_" + UUID.randomUUID(); }
 }
